@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <style>
+
+  .circle {
+    stroke: #fff;
+    stroke-width: 1.5px;
+  }
+
+
+  .link {
+    stroke: #999;
+    stroke-opacity: .8;
+  }
+
+  </style>
+
+</head>
+<body>
+<script>
+
+var width = 960,
+    height = 500,
+    nodeNames = [];
+
+var color = d3.scale.category10();
+
+var force = d3.layout.force()
+    .charge(-140)
+    .linkDistance(130)
+    .size([width, height]);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var link = svg.selectAll(".link"),
+    node = svg.selectAll(".node")
+
+d3.json("text.json", function(error, graph) {
+  update(graph, false);
+});
+
+function update(graph, lines, selection){
+  force
+      .nodes(graph.nodes)
+      .links(graph.links)
+      .start();
+
+  if (lines){ 
+    link = svg.selectAll(".link")
+        .data(getLinks(graph.links, selection))
+      .enter().append("line")
+        .attr("class", "link")
+        .style("stroke-width", function(d) { return (Math.sqrt(d.value))/2; });
+  }
+
+
+    node1 = svg.selectAll(".node")
+      .data(graph.nodes)
+    .enter().append("g")
+    .attr('class','node')
+      .call(force.drag);
+
+    circle = node1.append('circle')
+      .attr('class','circle')
+      .attr("r", function(d) { return Math.sqrt(d.size); })
+      .style("fill", function(d) { return color(d.size); })
+      .call(force.drag);
+
+    circle.append("title")
+      .attr("dy", ".35em")
+      .text(function(d) { return d.name; });
+
+    node1.append('text')
+      .attr("dy", ".35em")
+      .style("fill", "#000")
+      .attr('dx', function(d) { return Math.sqrt(d.size); })
+      .text(function(d) { return d.name; });
+
+    var texts = svg.selectAll("texts");
+
+  force.on("tick", function() {
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    // node.attr("cx", function(d) { return d.x; })
+    //     .attr("cy", function(d) { return d.y; });
+
+    node1
+      .attr("transform", function(d) { return "translate(" + d.x + ","+ d.y + ")"; })
+  });
+  node1.on("click", function(d){
+    node1 = node1.data(graph.nodes, function(d){ return d.name; });
+    //console.log(getNodes(graph.nodes, d.name));
+    node1.remove();
+    link.remove();  
+    update(graph, true, d.name );
+  });
+}
+
+function getLinks(link_list, key){
+  pertinent = [];
+  nodeNames = [key];
+  for (var i = 0; i < link_list.length; ++i ){
+    if (link_list[i].source.name == key){
+      pertinent.splice(0,0,link_list[i]);
+      nodeNames.splice(0,0,link_list[i].target.name);
+    }else if (link_list[i].target.name == key){
+      pertinent.splice(0, 0, link_list[i]);
+      nodeNames.splice(0,0,link_list[i].source.name);
+    }
+  }
+  console.log(nodeNames);
+  return pertinent;
+}
+
+function getNodes(node_list, key){
+  pertinent = [];
+  for (var i = 0; i < node_list.length; ++i){
+    if (nodeNames.contains(node_list[i].name)){
+      pertinent.splice(0,0,node_list[i]);
+    }
+  }
+  if (pertinent.length == 0){
+    return node_list;
+  }
+  return pertinent;
+}
+
+Array.prototype.contains = function(val){
+  var i = this.length;
+  while (i--){
+    if (this[i] === val){
+      return true;
+    }
+  }
+  return false;
+}
+</script>
